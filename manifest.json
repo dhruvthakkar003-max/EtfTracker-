@@ -1,0 +1,16 @@
+{
+  "name": "Trigger Invest — Nifty Dip Allocation Tracker",
+  "short_name": "TriggerInvest",
+  "description": "Track Nifty drawdown triggers, deploy regular and dip allocations across your fund weights, and export Excel statements.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EFF1EA",
+  "theme_color": "#20303F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

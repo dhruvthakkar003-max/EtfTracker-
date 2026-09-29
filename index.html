@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#20303F" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Trigger Invest" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>Trigger Invest — Nifty Dip Allocation Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#EFF1EA; --card:#FFFFFF; --ink:#20303F; --ink-soft:#5C6B78; --ink-faint:#8B96A0;
+    --gold:#B4872B; --gold-soft:#E7D9B8; --income:#3E7C59; --income-bg:#E7F1EA;
+    --expense:#A6433A; --expense-bg:#F5E7E4; --alert:#C2571C; --alert-bg:#FCEADB;
+    --border:#DEDACD; --border-soft:#E9E6DA; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:78px;}
+  #root{max-width:560px;margin:0 auto;padding:0 16px;}
+
+  header.app-header{
+    position:sticky;top:0;z-index:20;background:var(--paper);
+    padding:16px 0 12px 0;display:flex;align-items:center;justify-content:space-between;
+    border-bottom:2px solid var(--ink);
+  }
+  header.app-header .brand{font-family:'Fraunces',serif;font-weight:700;font-size:22px;letter-spacing:-0.01em;}
+  header.app-header .brand span{color:var(--gold);}
+  .export-btn{
+    background:var(--ink);color:#fff;border:none;border-radius:9px;padding:9px 13px;
+    font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;
+  }
+  .export-btn:hover{background:#132029;}
+
+  .tab-panel{display:none;padding-top:16px;}
+  .tab-panel.active{display:block;}
+
+  .card{background:var(--card);border:1px solid var(--border-soft);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(32,48,63,0.04);}
+  .section-title{font-family:'Fraunces',serif;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin:0 0 12px 0;display:flex;align-items:center;gap:8px;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .section-sub{font-size:11.5px;color:var(--ink-faint);margin:-8px 0 12px 0;line-height:1.5;}
+
+  /* Trigger status */
+  .trigger-badge{border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;}
+  .trigger-badge.none{background:var(--border-soft);color:var(--ink-soft);}
+  .trigger-badge.t1{background:var(--gold-soft);color:#7A5A18;}
+  .trigger-badge.t2{background:var(--alert-bg);color:var(--alert);border:1px solid var(--alert);}
+  .trigger-badge .tb-title{font-family:'Fraunces',serif;font-weight:700;font-size:17px;}
+  .trigger-badge .tb-sub{font-size:12px;margin-top:4px;}
+
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+  .stat-tile{background:#FCFBF8;border:1px solid var(--border-soft);border-radius:12px;padding:12px 8px;text-align:center;}
+  .stat-tile .label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-faint);margin-bottom:5px;}
+  .stat-tile .value{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;}
+
+  .form-row{display:flex;gap:10px;}
+  .form-field{flex:1;display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+  .form-field label{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.05em;}
+  .form-field input, .form-field select{border:1px solid var(--border);border-radius:8px;padding:10px;font-family:'Inter',sans-serif;font-size:14px;background:#FCFBF8;color:var(--ink);width:100%;}
+  .form-field input:focus, .form-field select:focus{outline:2px solid var(--gold-soft);outline-offset:1px;border-color:var(--gold);}
+  .mono-input{font-family:'IBM Plex Mono',monospace !important;font-weight:500;}
+
+  button.btn{border:none;border-radius:10px;padding:12px;font-family:'Inter',sans-serif;font-weight:600;font-size:13.5px;cursor:pointer;transition:.15s;width:100%;}
+  button.btn-primary{background:var(--ink);color:#fff;}
+  button.btn-primary:hover{background:#132029;}
+  button.btn-primary:disabled{background:var(--ink-faint);cursor:not-allowed;}
+  button.btn-gold{background:var(--gold);color:#fff;}
+  button.btn-gold:hover{background:#96701F;}
+  button.btn-alert{background:var(--alert);color:#fff;}
+  button.btn-alert:hover{background:#9C4415;}
+  button.btn-ghost{background:var(--border-soft);color:var(--ink-soft);}
+  button.btn-sm{padding:8px 12px;font-size:12px;width:auto;}
+  .form-error{font-size:12px;color:var(--expense);min-height:14px;}
+
+  .log-list{display:flex;flex-direction:column;gap:0;}
+  .log-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 2px;border-bottom:1px solid var(--border-soft);font-size:13px;}
+  .log-row:last-child{border-bottom:none;}
+  .log-row .lr-val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .log-row input.log-edit-date{flex:1.3;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:#FCFBF8;}
+  .log-row input.log-edit-level{flex:1;width:0;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;background:#FCFBF8;}
+  .log-del{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;padding:2px 6px;flex-shrink:0;}
+  .log-del:hover{color:var(--expense);}
+  .btn-icon{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;padding:3px 6px;flex-shrink:0;}
+  .btn-icon:hover{color:var(--gold);}
+  .btn-icon.del-txn-btn:hover, .btn-icon.del-contrib-btn:hover{color:var(--expense);}
+  .txn-right-actions{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+  .empty-note{color:var(--ink-faint);font-size:13px;text-align:center;padding:18px 0;}
+
+  /* Fund table */
+  table.fund-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.fund-table th{text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--ink-faint);padding:6px 6px;border-bottom:2px solid var(--ink);}
+  table.fund-table td{padding:8px 6px;border-bottom:1px solid var(--border-soft);font-family:'IBM Plex Mono',monospace;}
+  table.fund-table td.fname{font-family:'Inter',sans-serif;font-weight:600;}
+  table.fund-table tr.total-row td{font-weight:700;border-top:2px solid var(--ink);border-bottom:none;}
+  .ret-pos{color:var(--income);} .ret-neg{color:var(--expense);}
+  .price-input{width:70px;padding:5px 6px;border:1px solid var(--border);border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;}
+
+  .chart-wrap{display:flex;gap:16px;align-items:center;margin-top:6px;}
+  .donut-holder{flex-shrink:0;}
+  .category-list{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
+  .category-row .top-line{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;}
+  .category-row .cat-name{display:flex;align-items:center;gap:6px;font-weight:600;}
+  .category-row .cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .category-row .bar-track{background:var(--border-soft);border-radius:4px;height:5px;overflow:hidden;}
+  .category-row .bar-fill{height:100%;border-radius:4px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(32,48,63,0.55);z-index:50;display:flex;align-items:flex-end;justify-content:center;}
+  .modal-sheet{background:var(--card);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:20px;}
+  .modal-sheet h3{font-family:'Fraunces',serif;font-size:17px;margin:0 0 4px 0;}
+  .modal-sheet .modal-sub{font-size:12px;color:var(--ink-faint);margin-bottom:14px;}
+  .modal-close-row{display:flex;justify-content:flex-end;margin-bottom:4px;}
+  .modal-close-row button{background:none;border:none;font-size:20px;color:var(--ink-faint);cursor:pointer;}
+  .deploy-fund-row{border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+  .deploy-fund-row .dfr-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px;}
+  .deploy-fund-row .dfr-name{font-weight:600;}
+  .deploy-fund-row .dfr-amt{font-family:'IBM Plex Mono',monospace;color:var(--ink-soft);}
+  .deploy-fund-row .dfr-bottom{display:flex;gap:8px;align-items:center;font-size:12px;}
+  .deploy-fund-row input{flex:1;padding:8px;border:1px solid var(--border);border-radius:7px;font-family:'IBM Plex Mono',monospace;}
+  .deploy-fund-row .dfr-units{color:var(--ink-faint);white-space:nowrap;flex-basis:100%;}
+  .deploy-fund-row .dfr-bottom{flex-wrap:wrap;}
+  .deploy-fund-row .dfr-bottom input{min-width:0;}
+  .deploy-fund-row .dfr-pick{display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .deploy-fund-row .dfr-pick input{width:20px;height:20px;flex:none;padding:0;accent-color:var(--gold, #B4872B);}
+  .deploy-fund-row .dfr-w{font-size:11px;color:var(--ink-faint);}
+  .deploy-fund-row.off{opacity:.45;}
+  #deploySummary{margin:6px 0 8px 0;}
+
+  .btn-row{display:flex;gap:10px;margin-top:6px;}
+
+  nav.bottom-nav{
+    position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);
+    display:flex;justify-content:space-around;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px)) 4px;z-index:30;
+  }
+  nav.bottom-nav button{
+    background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-size:10.5px;color:var(--ink-faint);cursor:pointer;padding:4px 10px;font-family:'Inter',sans-serif;font-weight:600;
+  }
+  nav.bottom-nav button .nav-icon{font-size:18px;}
+  nav.bottom-nav button.active{color:var(--gold);}
+
+  .weight-warn{font-size:11.5px;color:var(--alert);margin-top:-6px;margin-bottom:10px;}
+  .weight-ok{font-size:11.5px;color:var(--income);margin-top:-6px;margin-bottom:10px;}
+  .fund-edit-row{display:flex;gap:6px;align-items:center;border-bottom:1px solid var(--border-soft);padding:8px 0;}
+  .fund-edit-row input{padding:7px;border:1px solid var(--border);border-radius:7px;font-size:12.5px;}
+  .fund-edit-row input.name-in{flex:1.4;}
+  .fund-edit-row input.ticker-in{flex:1.1;}
+  .fund-edit-row input.weight-in{flex:0.6;font-family:'IBM Plex Mono',monospace;}
+  .fund-edit-row button{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:15px;}
+  .fund-edit-row button:hover{color:var(--expense);}
+
+  .month-group-label{font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.05em;margin:12px 0 6px 2px;}
+  .txn-row{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px solid var(--border-soft);gap:8px;}
+  .txn-row .txn-left{min-width:0;}
+  .txn-row .txn-cat{font-weight:600;font-size:13px;}
+  .txn-row .txn-meta{font-size:11px;color:var(--ink-faint);}
+  .txn-row .txn-amt{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;flex-shrink:0;}
+  .tag{display:inline-block;font-size:9.5px;padding:1px 6px;border-radius:6px;margin-left:6px;font-weight:700;letter-spacing:0.02em;}
+  .tag.regular{background:var(--income-bg);color:var(--income);}
+  .tag.dip{background:var(--alert-bg);color:var(--alert);}
+  .tag.manual{background:var(--gold-soft);color:#7A5A18;}
+
+  .footer-note{text-align:center;font-size:10.5px;color:var(--ink-faint);margin-top:8px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div id="root">
+  <header class="app-header">
+    <div class="brand">Trigger<span>Invest</span></div>
+    <button class="export-btn" id="exportBtn">⬇ Excel Statement</button>
+  </header>
+
+  <!-- TRIGGER TAB -->
+  <section class="tab-panel active" id="tab-trigger">
+    <div class="card">
+      <div class="section-title">Nifty trigger status</div>
+      <div id="triggerBadge"></div>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="label">Reference High</div><div class="value" id="statHigh">—</div></div>
+        <div class="stat-tile"><div class="label">Current Level</div><div class="value" id="statCurrent">—</div></div>
+        <div class="stat-tile"><div class="label">Drawdown</div><div class="value" id="statDrawdown">—</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="niftyLevelInput">Nifty level</label>
+          <input type="number" id="niftyLevelInput" class="mono-input" placeholder="e.g. 24350" min="0" step="0.05" />
+        </div>
+        <div class="form-field">
+          <label for="niftyDateInput">Date</label>
+          <input type="date" id="niftyDateInput" />
+        </div>
+      </div>
+      <button class="btn btn-primary" id="logNiftyBtn">Log Nifty level</button>
+      <div id="niftyLogList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Reserves</div>
+      <div class="stat-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="stat-tile"><div class="label">Regular Reserve · this month</div><div class="value" id="statRegularReserve">—</div></div>
+        <div class="stat-tile"><div class="label">Dip Reserve</div><div class="value" id="statDipReserve">—</div></div>
+      </div>
+      <div id="rolloverNote" class="section-sub" style="margin:-4px 0 10px;"></div>
+      <button class="btn btn-ghost" id="logContribBtn" style="margin-bottom:10px;">+ Log this month's contribution</button>
+      <button class="btn btn-gold" id="deployRegularBtn" style="margin-bottom:8px;">Deploy Regular Reserve (per weights)</button>
+      <button class="btn btn-alert" id="deployDipBtn" style="margin-bottom:8px;">Record Dip Investment (trigger allocation)</button>
+      <button class="btn btn-ghost" id="manualInvestBtn">+ Manual Investment (custom amount &amp; fund)</button>
+      <div id="dipDisabledNote" class="section-sub" style="margin-top:8px;display:none;">No trigger active — dip deployment unlocks once drawdown crosses your threshold.</div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Contribution log</div>
+      <div id="contribLogList"></div>
+    </div>
+  </section>
+
+  <!-- PORTFOLIO TAB -->
+  <section class="tab-panel" id="tab-portfolio">
+    <div class="card">
+      <div class="section-title">Fund-wise investment &amp; returns</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <button class="btn btn-ghost btn-sm" id="refreshPricesBtn">↻ Refresh prices</button>
+        <div class="section-sub" id="priceStatus" style="flex:1;margin:0;"></div>
+      </div>
+      <div style="overflow-x:auto;"><table class="fund-table" id="fundTable"></table></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Current value allocation</div>
+      <div id="allocationContent"></div>
+    </div>
+  </section>
+
+  <!-- HISTORY TAB -->
+  <section class="tab-panel" id="tab-history">
+    <div class="card">
+      <div class="section-title">Overview</div>
+      <div id="historyOverview" class="stat-grid" style="grid-template-columns:1fr 1fr;"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Monthly deployment</div>
+      <div id="monthlySummary"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Transaction log</div>
+      <div id="txnLog"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS TAB -->
+  <section class="tab-panel" id="tab-settings">
+    <div class="card">
+      <div class="section-title">Contribution &amp; trigger rules</div>
+      <div class="form-field"><label for="setMonthly">Monthly contribution (₹)</label><input type="number" id="setMonthly" class="mono-input" min="0" /></div>
+      <div class="section-sub" style="margin:-2px 0 12px;">Each contribution goes fully into Regular Reserve. When the month changes, whatever is left in Regular Reserve moves to Dip Reserve automatically.</div>
+      <div class="form-row">
+        <div class="form-field"><label for="setT1">Trigger 1 drawdown %</label><input type="number" id="setT1" class="mono-input" min="0" max="100" step="0.1" /></div>
+        <div class="form-field"><label for="setT2">Trigger 2 drawdown %</label><input type="number" id="setT2" class="mono-input" min="0" max="100" step="0.1" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label for="setT1Deploy">Trigger 1 deploy % of dip</label><input type="number" id="setT1Deploy" class="mono-input" min="0" max="100" /></div>
+        <div class="form-field"><label for="setT2Deploy">Trigger 2 deploy % of dip</label><input type="number" id="setT2Deploy" class="mono-input" min="0" max="100" /></div>
+      </div>
+      <button class="btn btn-primary" id="saveSettingsBtn">Save settings</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Funds &amp; regular weights</div>
+      <div id="fundEditList"></div>
+      <div id="weightCheck"></div>
+      <button class="btn btn-ghost" id="addFundBtn">+ Add fund</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Data</div>
+      <button class="btn btn-ghost" id="clearDataBtn">Reset all data</button>
+      <div class="footer-note">All data is stored privately on this device/account. Add this page to your home screen for quick, app-like access.</div>
+    </div>
+  </section>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="trigger"><span class="nav-icon">◎</span>Trigger</button>
+  <button class="nav-btn" data-tab="portfolio"><span class="nav-icon">▤</span>Portfolio</button>
+  <button class="nav-btn" data-tab="history"><span class="nav-icon">≡</span>History</button>
+  <button class="nav-btn" data-tab="settings"><span class="nav-icon">⚙</span>Settings</button>
+</nav>
+
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- storage adapter: works inside Claude (window.storage) and standalone (localStorage) ---------------- */
+  var CLOUD = (typeof window.storage !== "undefined" && window.storage && typeof window.storage.get === "function");
+  var Store = {
+    async get(key){
+      if(CLOUD){
+        try{ var r = await window.storage.get(key, false); return r ? r.value : null; }catch(e){ return null; }
+      }
+      try{ return localStorage.getItem(key); }catch(e){ return null; }
+    },
+    async set(key, value){
+      if(CLOUD){
+        try{ await window.storage.set(key, value, false); }catch(e){}
+        return;
+      }
+      try{ localStorage.setItem(key, value); }catch(e){}
+    }
+  };
+
+  var K_SETTINGS = "pv-settings-v1";
+  var K_FUNDS = "pv-funds-v1";
+  var K_NIFTY = "pv-niftylog-v1";
+  var K_RESERVES = "pv-reserves-v1";
+  var K_CONTRIB = "pv-contributions-v1";
+  var K_TXN = "pv-transactions-v1";
+  var K_META = "pv-meta-v1";
+
+  var DEFAULT_SETTINGS = {
+    monthlyContribution: 10000,
+    regularPct: 80,
+    trigger1Pct: 2.5,
+    trigger2Pct: 5.0,
+    trigger1DeployPct: 50,
+    trigger2DeployPct: 100
+  };
+  var DEFAULT_FUNDS = [
+    { id: "f1", name: "MOVALUE", ticker: "NSE:MOVALUE", weight: 30, currentPrice: 0 },
+    { id: "f2", name: "JUNIORBEES", ticker: "NSE:JUNIORBEES", weight: 25, currentPrice: 0 },
+    { id: "f3", name: "MAFANG", ticker: "NSE:MAFANG", weight: 15, currentPrice: 0 },
+    { id: "f4", name: "CPSE", ticker: "NSE:CPSE", weight: 10, currentPrice: 0 },
+    { id: "f5", name: "GOLDBEES", ticker: "NSE:GOLDBEES", weight: 10, currentPrice: 0 },
+    { id: "f6", name: "MID150BEES", ticker: "NSE:MID150BEES", weight: 10, currentPrice: 0 }
+  ];
+
+  var state = {
+    settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+    funds: JSON.parse(JSON.stringify(DEFAULT_FUNDS)),
+    niftyLog: [],
+    reserves: { regular: 0, dip: 0 },
+    contributions: [],
+    transactions: [],
+    meta: { lastRolloverMonth: null, lastRollover: null, pricesAt: null, pricesMarketTime: null },
+    activeTab: "trigger"
+  };
+
+  var CAT_COLORS = ["#B4872B","#3E7C59","#A6433A","#5B7FA6","#8B5FA6","#C2571C","#4E9E9E","#A68B3E","#6B7B4E","#7A5C4E"];
+
+  /* ---------------- utils ---------------- */
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+  function todayISO(){ var d = new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function monthKey(dateStr){ return dateStr.slice(0,7); }
+  function monthLabel(key){
+    var parts = key.split("-");
+    var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return months[parseInt(parts[1],10)-1] + " " + parts[0];
+  }
+  function fmtMoney(n){
+    if(n === null || n === undefined || isNaN(n)) return "₹0";
+    var v = Math.round(n); var neg = v < 0; v = Math.abs(v);
+    var s = v.toString();
+    var lastThree = s.substring(s.length-3);
+    var other = s.substring(0, s.length-3);
+    if(other !== "") lastThree = "," + lastThree;
+    var formatted = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+    return (neg?"-":"") + "₹" + formatted;
+  }
+  function fmtNum(n, dec){
+    if(n === null || n === undefined || isNaN(n)) return "0";
+    return n.toFixed(dec===undefined?2:dec);
+  }
+  function fmtPct(n){
+    if(n === null || n === undefined || isNaN(n)) return "0.0%";
+    return (n>=0?"+":"") + n.toFixed(1) + "%";
+  }
+  function escapeHtml(s){
+    var d = document.createElement("div");
+    d.textContent = (s===null||s===undefined) ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  /* ---------------- persistence ---------------- */
+  async function loadAll(){
+    var s = await Store.get(K_SETTINGS);
+    if(s){ try{ state.settings = Object.assign({}, DEFAULT_SETTINGS, JSON.parse(s)); }catch(e){} }
+    var f = await Store.get(K_FUNDS);
+    if(f){ try{ var parsed = JSON.parse(f); if(Array.isArray(parsed) && parsed.length){ state.funds = parsed; } }catch(e){} }
+    var n = await Store.get(K_NIFTY);
+    if(n){ try{ state.niftyLog = JSON.parse(n) || []; }catch(e){} }
+    var r = await Store.get(K_RESERVES);
+    if(r){ try{ state.reserves = Object.assign({regular:0,dip:0}, JSON.parse(r)); }catch(e){} }
+    var c = await Store.get(K_CONTRIB);
+    if(c){ try{ state.contributions = JSON.parse(c) || []; }catch(e){} }
+    var t = await Store.get(K_TXN);
+    if(t){ try{ state.transactions = JSON.parse(t) || []; }catch(e){} }
+    var m = await Store.get(K_META);
+    if(m){ try{ state.meta = Object.assign({ lastRolloverMonth: null, lastRollover: null, pricesAt: null, pricesMarketTime: null }, JSON.parse(m)); }catch(e){} }
+  }
+  async function saveMeta(){ await Store.set(K_META, JSON.stringify(state.meta)); }
+
+  /* Month rollover: leftover Regular Reserve moves to Dip Reserve when the calendar month changes */
+  async function checkRollover(){
+    var cur = monthKey(todayISO());
+    var m = state.meta;
+    var moved = 0;
+    if(!m.lastRolloverMonth){
+      var latest = null;
+      state.contributions.forEach(function(c){ var k = monthKey(c.date); if(!latest || k > latest) latest = k; });
+      m.lastRolloverMonth = (latest && latest < cur) ? latest : cur;
+    }
+    if(m.lastRolloverMonth < cur){
+      var amt = state.reserves.regular;
+      if(amt > 0){
+        state.reserves.dip += amt;
+        state.reserves.regular = 0;
+        m.lastRollover = { month: m.lastRolloverMonth, amount: amt, on: todayISO() };
+        moved = amt;
+        await saveReserves();
+      }
+      m.lastRolloverMonth = cur;
+    }
+    await saveMeta();
+    return moved;
+  }
+  /* Where a contribution lands: current month -> Regular; a past month -> straight to Dip (already rolled over) */
+  function splitForDate(amount, dateStr){
+    if(monthKey(dateStr) < monthKey(todayISO())) return { regularPart: 0, dipPart: amount };
+    return { regularPart: amount, dipPart: 0 };
+  }
+  function removeContributionFromReserves(c){
+    var left = c.amount;
+    var order = (monthKey(c.date) >= monthKey(todayISO())) ? ["regular","dip"] : ["dip","regular"];
+    order.forEach(function(k){
+      var take = Math.min(state.reserves[k], left);
+      state.reserves[k] -= take; left -= take;
+    });
+  }
+  async function saveSettings(){ await Store.set(K_SETTINGS, JSON.stringify(state.settings)); }
+  async function saveFunds(){ await Store.set(K_FUNDS, JSON.stringify(state.funds)); }
+  async function saveNifty(){ await Store.set(K_NIFTY, JSON.stringify(state.niftyLog)); }
+  async function saveReserves(){ await Store.set(K_RESERVES, JSON.stringify(state.reserves)); }
+  async function saveContrib(){ await Store.set(K_CONTRIB, JSON.stringify(state.contributions)); }
+  async function saveTxn(){ await Store.set(K_TXN, JSON.stringify(state.transactions)); }
+
+  /* ---------------- derived calculations ---------------- */
+  function sortedNiftyLog(){
+    return state.niftyLog.slice().sort(function(a,b){ return a.date.localeCompare(b.date) || a.createdAt-b.createdAt; });
+  }
+  function referenceHigh(){
+    if(state.niftyLog.length === 0) return 0;
+    return Math.max.apply(null, state.niftyLog.map(function(e){ return e.level; }));
+  }
+  function currentLevel(){
+    var sorted = sortedNiftyLog();
+    if(sorted.length === 0) return null;
+    return sorted[sorted.length-1].level;
+  }
+  function drawdownPct(){
+    var high = referenceHigh(); var cur = currentLevel();
+    if(!high || cur === null) return 0;
+    return ((high - cur) / high) * 100;
+  }
+  function triggerStatus(){
+    var dd = drawdownPct();
+    if(dd >= state.settings.trigger2Pct){ return { level:2, pct: state.settings.trigger2Pct, label: "Trigger 2 active — " + state.settings.trigger2Pct + "%+ drawdown" }; }
+    if(dd >= state.settings.trigger1Pct){ return { level:1, pct: state.settings.trigger1Pct, label: "Trigger 1 active — " + state.settings.trigger1Pct + "%+ drawdown" }; }
+    return { level:0, pct:0, label: "No trigger — normal month" };
+  }
+  function fundTotals(fundId){
+    var invested = 0, units = 0;
+    state.transactions.forEach(function(t){
+      if(t.fundId === fundId){ invested += t.amount; units += t.units; }
+    });
+    return { invested: invested, units: units };
+  }
+
+  /* ---------------- tab navigation ---------------- */
+  function showTab(tab){
+    state.activeTab = tab;
+    document.querySelectorAll(".tab-panel").forEach(function(p){ p.classList.remove("active"); });
+    document.getElementById("tab-"+tab).classList.add("active");
+    document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
+    renderActiveTab();
+    if(tab === "portfolio" && navigator.onLine !== false){
+      var age = Date.now() - (state.meta.pricesAt || 0);
+      if(age > 30*60*1000) refreshPrices(true);
+    }
+  }
+  function renderActiveTab(){
+    if(state.activeTab === "trigger") renderTrigger();
+    else if(state.activeTab === "portfolio") renderPortfolio();
+    else if(state.activeTab === "history") renderHistory();
+    else if(state.activeTab === "settings") renderSettings();
+  }
+
+  /* ---------------- TRIGGER TAB ---------------- */
+  function renderTrigger(){
+    var ts = triggerStatus();
+    var badge = document.getElementById("triggerBadge");
+    var cls = ts.level === 2 ? "t2" : (ts.level === 1 ? "t1" : "none");
+    badge.innerHTML = '<div class="trigger-badge '+cls+'"><div class="tb-title">'+escapeHtml(ts.label)+'</div>' +
+      '<div class="tb-sub">Deploy '+(ts.level===2?state.settings.trigger2DeployPct:(ts.level===1?state.settings.trigger1DeployPct:0))+'% of dip reserve when you record this dip.</div></div>';
+
+    document.getElementById("statHigh").textContent = referenceHigh() ? fmtNum(referenceHigh(),0) : "—";
+    document.getElementById("statCurrent").textContent = currentLevel()!==null ? fmtNum(currentLevel(),0) : "—";
+    document.getElementById("statDrawdown").textContent = fmtNum(drawdownPct(),2) + "%";
+
+    document.getElementById("statRegularReserve").textContent = fmtMoney(state.reserves.regular);
+    document.getElementById("statDipReserve").textContent = fmtMoney(state.reserves.dip);
+    var ro = state.meta && state.meta.lastRollover;
+    document.getElementById("rolloverNote").textContent = ro ? ("Last rollover: " + fmtMoney(ro.amount) + " moved from Regular to Dip Reserve (" + monthLabel(ro.month) + " leftover).") : "Unused Regular Reserve moves to Dip Reserve when the month changes.";
+
+    document.getElementById("deployDipBtn").disabled = ts.level === 0;
+    document.getElementById("deployDipBtn").style.opacity = ts.level === 0 ? "0.5" : "1";
+    document.getElementById("dipDisabledNote").style.display = ts.level === 0 ? "block" : "none";
+
+    var listEl = document.getElementById("niftyLogList");
+    var sorted = sortedNiftyLog().slice().reverse().slice(0,8);
+    if(sorted.length === 0){
+      listEl.innerHTML = '<div class="empty-note">No Nifty levels logged yet.</div>';
+    } else {
+      listEl.innerHTML = '<div class="log-list">' + sorted.map(function(e){
+        return '<div class="log-row"><input type="date" class="log-edit-date" data-id="'+e.id+'" value="'+e.date+'" />' +
+          '<input type="number" class="log-edit-level mono-input" data-id="'+e.id+'" value="'+e.level+'" step="0.05" />' +
+          '<button class="log-del" data-id="'+e.id+'">✕</button></div>';
+      }).join("") + '</div>';
+      listEl.querySelectorAll(".log-edit-date, .log-edit-level").forEach(function(inp){
+        inp.addEventListener("change", async function(){
+          var id = inp.getAttribute("data-id");
+          var entry = state.niftyLog.find(function(e){ return e.id === id; });
+          if(!entry) return;
+          if(inp.classList.contains("log-edit-date")){ entry.date = inp.value || entry.date; }
+          else { var v = parseFloat(inp.value); if(v > 0){ entry.level = v; } }
+          await saveNifty();
+          renderTrigger();
+        });
+      });
+      listEl.querySelectorAll(".log-del").forEach(function(btn){
+        btn.addEventListener("click", async function(){
+          state.niftyLog = state.niftyLog.filter(function(e){ return e.id !== btn.getAttribute("data-id"); });
+          await saveNifty(); renderTrigger();
+        });
+      });
+    }
+
+    renderContribLog();
+  }
+
+  function renderContribLog(){
+    var el = document.getElementById("contribLogList");
+    if(!el) return;
+    var sorted = state.contributions.slice().sort(function(a,b){ return b.date.localeCompare(a.date); });
+    if(sorted.length === 0){
+      el.innerHTML = '<div class="empty-note">No contributions logged yet.</div>';
+      return;
+    }
+    el.innerHTML = sorted.map(function(c){
+      return '<div class="txn-row"><div class="txn-left"><div class="txn-cat">'+fmtMoney(c.amount)+'</div>' +
+        '<div class="txn-meta">'+escapeHtml(c.date)+' · Regular '+fmtMoney(c.regularPart)+' / Dip '+fmtMoney(c.dipPart)+'</div></div>' +
+        '<div class="txn-right-actions"><button class="btn-icon edit-contrib-btn" data-id="'+c.id+'" title="Edit">✎</button>' +
+        '<button class="btn-icon del-contrib-btn" data-id="'+c.id+'" title="Delete">✕</button></div></div>';
+    }).join("");
+    el.querySelectorAll(".del-contrib-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){ deleteContribution(btn.getAttribute("data-id")); });
+    });
+    el.querySelectorAll(".edit-contrib-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){ openEditContributionModal(btn.getAttribute("data-id")); });
+    });
+  }
+
+  async function deleteContribution(id){
+    var c = state.contributions.find(function(x){ return x.id === id; });
+    if(!c) return;
+    confirmModal("Delete this contribution?", "This will remove the log entry and subtract "+fmtMoney(c.amount)+" from your reserves (reserves won't go below ₹0).", async function(){
+      removeContributionFromReserves(c);
+      state.contributions = state.contributions.filter(function(x){ return x.id !== id; });
+      await saveReserves(); await saveContrib();
+      renderTrigger();
+      showToast("Contribution deleted.");
+    });
+  }
+
+  function openEditContributionModal(id){
+    var c = state.contributions.find(function(x){ return x.id === id; });
+    if(!c) return;
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = '<div class="modal-sheet">' +
+      '<div class="modal-close-row"><button id="editContribCloseBtn">✕</button></div>' +
+      '<h3>Edit contribution</h3><div class="modal-sub">Current-month contributions sit in Regular Reserve; contributions dated in an earlier month go straight to Dip Reserve.</div>' +
+      '<div class="form-field"><label>Date</label><input type="date" id="editContribDate" value="'+c.date+'" /></div>' +
+      '<div class="form-field"><label>Amount (₹)</label><input type="number" id="editContribAmount" class="mono-input" value="'+c.amount+'" min="0" /></div>' +
+      '<div class="form-error" id="editContribError"></div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="editContribCancelBtn">Cancel</button><button class="btn btn-primary" id="editContribSaveBtn">Save</button></div>' +
+      '</div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+    function close(){ overlay.remove(); }
+    document.getElementById("editContribCloseBtn").addEventListener("click", close);
+    document.getElementById("editContribCancelBtn").addEventListener("click", close);
+    document.getElementById("editContribSaveBtn").addEventListener("click", async function(){
+      var newAmount = parseFloat(document.getElementById("editContribAmount").value);
+      var newDate = document.getElementById("editContribDate").value || c.date;
+      if(!newAmount || newAmount <= 0){ document.getElementById("editContribError").textContent = "Enter a valid amount."; return; }
+      // reverse old split from reserves, apply new split
+      removeContributionFromReserves(c);
+      var sp = splitForDate(newAmount, newDate);
+      c.amount = newAmount; c.date = newDate; c.regularPart = sp.regularPart; c.dipPart = sp.dipPart;
+      state.reserves.regular += sp.regularPart;
+      state.reserves.dip += sp.dipPart;
+      await saveReserves(); await saveContrib();
+      close();
+      renderTrigger();
+      showToast("Contribution updated.");
+    });
+  }
+
+  function confirmModal(title, msg, onConfirm){
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = '<div class="modal-sheet"><h3>'+escapeHtml(title)+'</h3><div class="modal-sub">'+escapeHtml(msg)+'</div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button><button class="btn btn-alert" id="confirmOkBtn">Confirm</button></div></div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+    document.getElementById("confirmCancelBtn").addEventListener("click", function(){ overlay.remove(); });
+    document.getElementById("confirmOkBtn").addEventListener("click", function(){ overlay.remove(); onConfirm(); });
+  }
+
+  document.getElementById("refreshPricesBtn").addEventListener("click", function(){ refreshPrices(false); });
+  document.getElementById("logNiftyBtn").addEventListener("click", async function(){
+    var levelInput = document.getElementById("niftyLevelInput");
+    var dateInput = document.getElementById("niftyDateInput");
+    var level = parseFloat(levelInput.value);
+    var date = dateInput.value || todayISO();
+    if(!level || level <= 0){ levelInput.focus(); return; }
+    state.niftyLog.push({ id: uid(), date: date, level: level, createdAt: Date.now() });
+    await saveNifty();
+    levelInput.value = "";
+    renderTrigger();
+  });
+
+  document.getElementById("logContribBtn").addEventListener("click", function(){
+    openContribModal();
+  });
+
+  function openContribModal(){
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    var defAmt = state.settings.monthlyContribution;
+    overlay.innerHTML = '<div class="modal-sheet">' +
+      '<div class="modal-close-row"><button id="contribCloseBtn">✕</button></div>' +
+      '<h3>Log contribution</h3><div class="modal-sub">Defaults to your monthly contribution setting — edit the amount for a custom top-up or partial month. It is added to Regular Reserve.</div>' +
+      '<div class="form-field"><label>Date</label><input type="date" id="contribDate" value="'+todayISO()+'" /></div>' +
+      '<div class="form-field"><label>Amount (₹)</label><input type="number" id="contribAmount" class="mono-input" value="'+defAmt+'" min="0" /></div>' +
+      '<div class="section-sub" id="contribSplitPreview" style="margin-top:-2px;"></div>' +
+      '<div class="form-error" id="contribError"></div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="contribCancelBtn">Cancel</button><button class="btn btn-primary" id="contribConfirmBtn">Add contribution</button></div>' +
+      '</div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+
+    function updatePreview(){
+      var amt = parseFloat(document.getElementById("contribAmount").value) || 0;
+      var dv = document.getElementById("contribDate").value || todayISO();
+      var sp = splitForDate(amt, dv);
+      document.getElementById("contribSplitPreview").textContent = sp.regularPart > 0
+        ? ("Goes fully into Regular Reserve (" + fmtMoney(amt) + "). Any unused balance moves to Dip Reserve when the month changes.")
+        : ("Dated in an earlier month, so " + fmtMoney(amt) + " goes straight to Dip Reserve.");
+    }
+    document.getElementById("contribAmount").addEventListener("input", updatePreview);
+    document.getElementById("contribDate").addEventListener("input", updatePreview);
+    updatePreview();
+
+    function close(){ overlay.remove(); }
+    document.getElementById("contribCloseBtn").addEventListener("click", close);
+    document.getElementById("contribCancelBtn").addEventListener("click", close);
+    document.getElementById("contribConfirmBtn").addEventListener("click", async function(){
+      var amt = parseFloat(document.getElementById("contribAmount").value);
+      var date = document.getElementById("contribDate").value || todayISO();
+      if(!amt || amt <= 0){ document.getElementById("contribError").textContent = "Enter a valid amount."; return; }
+      var sp = splitForDate(amt, date);
+      state.contributions.push({ id: uid(), date: date, amount: amt, regularPart: sp.regularPart, dipPart: sp.dipPart });
+      state.reserves.regular += sp.regularPart;
+      state.reserves.dip += sp.dipPart;
+      await saveContrib(); await saveReserves();
+      close();
+      renderTrigger();
+      showToast("Contribution logged.");
+    });
+  }
+
+  document.getElementById("deployRegularBtn").addEventListener("click", function(){ openDeployModal("regular"); });
+  document.getElementById("deployDipBtn").addEventListener("click", function(){
+    if(triggerStatus().level === 0) return;
+    openDeployModal("dip");
+  });
+  document.getElementById("manualInvestBtn").addEventListener("click", function(){ openManualInvestModal(); });
+
+  function openManualInvestModal(){
+    if(state.funds.length === 0){
+      alertModal("No funds set up", "Add at least one fund in Settings first.");
+      return;
+    }
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    var fundOptions = state.funds.map(function(f){ return '<option value="'+f.id+'">'+escapeHtml(f.name)+'</option>'; }).join("");
+    overlay.innerHTML = '<div class="modal-sheet">' +
+      '<div class="modal-close-row"><button id="manualCloseBtn">✕</button></div>' +
+      '<h3>Manual investment</h3><div class="modal-sub">Pick a reserve, a fund, and enter any custom amount — bypasses the automatic weight/equal-split logic.</div>' +
+      '<div class="form-field"><label>Reserve source</label><select id="manualSource"><option value="regular">Regular Reserve ('+fmtMoney(state.reserves.regular)+' available)</option><option value="dip">Dip Reserve ('+fmtMoney(state.reserves.dip)+' available)</option></select></div>' +
+      '<div class="form-field"><label>Fund</label><select id="manualFund">'+fundOptions+'</select></div>' +
+      '<div class="form-row">' +
+        '<div class="form-field"><label>Amount (₹)</label><input type="number" id="manualAmount" class="mono-input" min="0" /></div>' +
+        '<div class="form-field"><label>Purchase price</label><input type="number" id="manualPrice" class="mono-input" min="0" step="0.01" /></div>' +
+      '</div>' +
+      '<div class="form-field"><label>Date</label><input type="date" id="manualDate" value="'+todayISO()+'" /></div>' +
+      '<div class="section-sub" id="manualUnitsPreview" style="margin-top:-2px;">— units</div>' +
+      '<div class="form-error" id="manualError"></div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="manualCancelBtn">Cancel</button><button class="btn btn-primary" id="manualConfirmBtn">Confirm investment</button></div>' +
+      '</div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+
+    var fundSel = document.getElementById("manualFund");
+    var firstFund = state.funds[0];
+    document.getElementById("manualPrice").value = firstFund.currentPrice || "";
+
+    fundSel.addEventListener("change", function(){
+      var f = state.funds.find(function(x){ return x.id === fundSel.value; });
+      document.getElementById("manualPrice").value = (f && f.currentPrice) || "";
+      updateManualPreview();
+    });
+
+    function updateManualPreview(){
+      var amt = parseFloat(document.getElementById("manualAmount").value);
+      var price = parseFloat(document.getElementById("manualPrice").value);
+      var out = document.getElementById("manualUnitsPreview");
+      if(amt > 0 && price > 0){ out.textContent = fmtNum(amt/price,3) + " units"; }
+      else { out.textContent = "— units"; }
+    }
+    document.getElementById("manualAmount").addEventListener("input", updateManualPreview);
+    document.getElementById("manualPrice").addEventListener("input", updateManualPreview);
+
+    function close(){ overlay.remove(); }
+    document.getElementById("manualCloseBtn").addEventListener("click", close);
+    document.getElementById("manualCancelBtn").addEventListener("click", close);
+
+    document.getElementById("manualConfirmBtn").addEventListener("click", async function(){
+      var errEl = document.getElementById("manualError");
+      errEl.textContent = "";
+      var source = document.getElementById("manualSource").value;
+      var fundId = fundSel.value;
+      var amount = parseFloat(document.getElementById("manualAmount").value);
+      var price = parseFloat(document.getElementById("manualPrice").value);
+      var date = document.getElementById("manualDate").value || todayISO();
+      var fund = state.funds.find(function(f){ return f.id === fundId; });
+
+      if(!amount || amount <= 0){ errEl.textContent = "Enter a valid amount."; return; }
+      if(!price || price <= 0){ errEl.textContent = "Enter a valid purchase price."; return; }
+      var available = state.reserves[source];
+      if(amount > available + 0.01){
+        errEl.textContent = "Amount exceeds available " + (source==="regular"?"Regular":"Dip") + " Reserve (" + fmtMoney(available) + "). Reduce the amount or log more contribution first.";
+        return;
+      }
+
+      var ts = triggerStatus();
+      state.transactions.push({
+        id: uid(), date: date, type: source, fundId: fundId, fundName: fund ? fund.name : fundId,
+        amount: amount, price: price, units: amount/price,
+        triggerLevel: source === "dip" ? (ts.level>0 ? ts.pct : null) : null, niftyLevel: currentLevel(), manual: true
+      });
+      if(fund){ fund.currentPrice = price; }
+      state.reserves[source] = Math.max(0, state.reserves[source] - amount);
+
+      await saveTxn(); await saveFunds(); await saveReserves();
+      close();
+      renderTrigger();
+      showToast("Manual investment recorded in " + (fund?fund.name:"fund") + ".");
+    });
+  }
+
+  /* ---------------- deploy modal (shared for regular + dip) ---------------- */
+  function openDeployModal(kind){
+    var ts = triggerStatus();
+    var pool = kind === "regular" ? state.reserves.regular : state.reserves.dip;
+    var deployPct = 0, target = pool;
+    if(kind === "dip"){
+      deployPct = ts.level === 2 ? state.settings.trigger2DeployPct : state.settings.trigger1DeployPct;
+      target = pool * (deployPct/100);
+    }
+    if(target <= 0){
+      alertModal("Nothing to deploy", "Your " + (kind==="regular"?"regular":"dip") + " reserve is currently ₹0. Log a monthly contribution first.");
+      return;
+    }
+    var funds = state.funds;
+    var selected = {}; funds.forEach(function(f){ selected[f.id] = true; });
+    var amounts = {};
+    function round2(n){ return Math.round(n*100)/100; }
+    function distribute(){
+      amounts = {};
+      var sel = funds.slice();
+      if(!sel.length) return;
+      var wsum = sel.reduce(function(a,f){ return a + (f.weight||0); }, 0);
+      var used = 0;
+      sel.forEach(function(f, i){
+        var a;
+        if(i === sel.length-1){ a = round2(target - used); }
+        else {
+          a = (kind === "regular" && wsum > 0) ? round2(target * (f.weight||0) / wsum) : round2(target / sel.length);
+          used += a;
+        }
+        amounts[f.id] = Math.max(0, a);
+      });
+    }
+    distribute();
+
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    var title = kind === "regular" ? "Deploy Regular Reserve" : "Record Dip Investment";
+    var sub = kind === "regular"
+      ? ("Each fund has its own amount from your regular weights (total " + fmtMoney(target) + "). Untick a fund to skip it — its amount is NOT given to other funds and stays in Regular Reserve for a later manual investment.")
+      : ("Trigger " + ts.pct + "% active — suggested " + deployPct + "% of dip reserve (" + fmtMoney(target) + ") split equally across all funds. Untick a fund to skip it — its amount is NOT given to other funds and stays in Dip Reserve for a later manual investment. You can also edit amounts (up to " + fmtMoney(pool) + " total).");
+
+    var rowsHtml = funds.map(function(fund){
+      return '<div class="deploy-fund-row" data-fid="'+fund.id+'">' +
+        '<div class="dfr-top"><label class="dfr-pick"><input type="checkbox" class="deploy-pick" checked /><span class="dfr-name">'+escapeHtml(fund.name)+'</span></label>' +
+        (kind==="regular" ? '<span class="dfr-w">weight '+(fund.weight||0)+'%</span>' : '') + '</div>' +
+        '<div class="dfr-bottom"><input type="number" class="deploy-amt-input" placeholder="Amount ₹" step="0.01" min="0" />' +
+        '<input type="number" class="deploy-price-input" placeholder="Purchase price" step="0.01" min="0" value="'+(fund.currentPrice||"")+'" />' +
+        '<span class="dfr-units">— units</span></div>' +
+      '</div>';
+    }).join("");
+
+    overlay.innerHTML =
+      '<div class="modal-sheet">' +
+        '<div class="modal-close-row"><button id="modalCloseBtn">✕</button></div>' +
+        '<h3>'+title+'</h3><div class="modal-sub">'+sub+'</div>' +
+        '<div class="form-field"><label for="deployDate">Deployment date</label><input type="date" id="deployDate" value="'+todayISO()+'" /></div>' +
+        rowsHtml +
+        '<div class="section-sub" id="deploySummary"></div>' +
+        '<div class="form-error" id="deployError"></div>' +
+        '<div class="btn-row">' +
+          '<button class="btn btn-ghost" id="deployCancelBtn">Cancel</button>' +
+          '<button class="btn btn-primary" id="deployConfirmBtn">Confirm deployment</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+
+    function rowEls(){ return Array.prototype.slice.call(overlay.querySelectorAll(".deploy-fund-row")); }
+    function refresh(){
+      var total = 0, count = 0;
+      rowEls().forEach(function(row){
+        var fid = row.getAttribute("data-fid");
+        var on = row.querySelector(".deploy-pick").checked;
+        row.classList.toggle("off", !on);
+        row.querySelector(".deploy-amt-input").disabled = !on;
+        row.querySelector(".deploy-price-input").disabled = !on;
+        var unitsEl = row.querySelector(".dfr-units");
+        if(!on){ unitsEl.textContent = "Not included"; return; }
+        var amt = parseFloat(row.querySelector(".deploy-amt-input").value) || 0;
+        var price = parseFloat(row.querySelector(".deploy-price-input").value);
+        total += amt; count++;
+        unitsEl.textContent = (price > 0 && amt > 0) ? (fmtNum(amt/price,3) + " units") : "— units";
+      });
+      var left = pool - total;
+      document.getElementById("deploySummary").textContent = count + " of " + funds.length + " funds · Investing " + fmtMoney(total) + " · " + (left >= -0.005 ? (fmtMoney(Math.max(0,left)) + " stays in " + (kind==="regular"?"Regular":"Dip") + " Reserve") : ("over reserve by " + fmtMoney(-left)));
+    }
+    function fillAmounts(){
+      rowEls().forEach(function(row){
+        var fid = row.getAttribute("data-fid");
+        row.querySelector(".deploy-amt-input").value = amounts[fid];
+      });
+      refresh();
+    }
+    fillAmounts();
+
+    overlay.querySelectorAll(".deploy-pick").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        var fid = cb.closest(".deploy-fund-row").getAttribute("data-fid");
+        selected[fid] = cb.checked;
+        refresh();
+      });
+    });
+    overlay.querySelectorAll(".deploy-amt-input, .deploy-price-input").forEach(function(inp){ inp.addEventListener("input", refresh); });
+
+    function closeModal(){ overlay.remove(); }
+    document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
+    document.getElementById("deployCancelBtn").addEventListener("click", closeModal);
+
+    document.getElementById("deployConfirmBtn").addEventListener("click", async function(){
+      var errEl = document.getElementById("deployError");
+      errEl.textContent = "";
+      var date = document.getElementById("deployDate").value || todayISO();
+      var entries = [];
+      var problem = "";
+      var total = 0;
+      rowEls().forEach(function(row){
+        if(!row.querySelector(".deploy-pick").checked) return;
+        var fid = row.getAttribute("data-fid");
+        var amt = parseFloat(row.querySelector(".deploy-amt-input").value);
+        var price = parseFloat(row.querySelector(".deploy-price-input").value);
+        if(!(amt > 0)){ problem = "Enter an amount for every ticked fund (or untick it)."; }
+        else if(!(price > 0)){ problem = "Enter a valid purchase price for every ticked fund."; }
+        else { entries.push({ fundId: fid, amount: amt, price: price }); total += amt; }
+      });
+      if(problem){ errEl.textContent = problem; return; }
+      if(entries.length === 0){ errEl.textContent = "Tick at least one fund to invest in."; return; }
+      if(total > pool + 0.01){ errEl.textContent = "Total " + fmtMoney(total) + " exceeds your available reserve (" + fmtMoney(pool) + ")."; return; }
+
+      var niftyLevel = currentLevel();
+      entries.forEach(function(e){
+        var fund = state.funds.find(function(f){ return f.id === e.fundId; });
+        state.transactions.push({
+          id: uid(), date: date, type: kind, fundId: e.fundId, fundName: fund ? fund.name : e.fundId,
+          amount: e.amount, price: e.price, units: e.amount/e.price,
+          triggerLevel: kind === "dip" ? ts.pct : null, niftyLevel: niftyLevel
+        });
+        if(fund){ fund.currentPrice = e.price; }
+      });
+      state.reserves[kind] = Math.max(0, state.reserves[kind] - total);
+
+      await saveTxn(); await saveFunds(); await saveReserves();
+      closeModal();
+      renderTrigger();
+      showToast((kind==="regular"?"Regular":"Dip") + " deployment recorded across " + entries.length + " fund" + (entries.length===1?"":"s") + ".");
+    });
+  }
+
+  function alertModal(title, msg){
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = '<div class="modal-sheet"><div class="modal-close-row"><button id="alertCloseBtn">✕</button></div>' +
+      '<h3>'+escapeHtml(title)+'</h3><div class="modal-sub">'+escapeHtml(msg)+'</div>' +
+      '<button class="btn btn-primary" id="alertOkBtn">OK</button></div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+    function close(){ overlay.remove(); }
+    document.getElementById("alertCloseBtn").addEventListener("click", close);
+    document.getElementById("alertOkBtn").addEventListener("click", close);
+  }
+
+  function showToast(msg){
+    var t = document.createElement("div");
+    t.textContent = msg;
+    t.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:20px;font-size:12.5px;z-index:60;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-width:90%;text-align:center;";
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 2600);
+  }
+
+  /* ---------------- LIVE PRICES (Yahoo Finance, NSE/BSE) ---------------- */
+  var pricesBusy = false;
+  var priceSrcIdx = 0;
+  function yahooSymbol(ticker){
+    var t = String(ticker || "").trim().toUpperCase();
+    if(!t) return "";
+    if(t.indexOf("NSE:") === 0) return t.slice(4).trim() + ".NS";
+    if(t.indexOf("BSE:") === 0) return t.slice(4).trim() + ".BO";
+    if(/\.(NS|BO)$/.test(t)) return t;
+    return t + ".NS";
+  }
+  function fetchWithTimeout(url, ms){
+    var ctrl = new AbortController();
+    var to = setTimeout(function(){ ctrl.abort(); }, ms);
+    return fetch(url, { signal: ctrl.signal, cache: "no-store" }).finally(function(){ clearTimeout(to); });
+  }
+  async function fetchQuote(ticker){
+    var sym = yahooSymbol(ticker);
+    if(!sym) throw new Error("No ticker set");
+    var path = "/v8/finance/chart/" + encodeURIComponent(sym) + "?interval=1d&range=1d";
+    var y1 = "https://query1.finance.yahoo.com" + path;
+    var sources = [
+      y1,
+      "https://query2.finance.yahoo.com" + path,
+      "https://corsproxy.io/?url=" + encodeURIComponent(y1),
+      "https://api.allorigins.win/raw?url=" + encodeURIComponent(y1)
+    ];
+    var order = [priceSrcIdx].concat(sources.map(function(_, i){ return i; }).filter(function(i){ return i !== priceSrcIdx; }));
+    var lastErr = new Error("No price source reachable");
+    for(var k = 0; k < order.length; k++){
+      try{
+        var r = await fetchWithTimeout(sources[order[k]], 8000);
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        var j = await r.json();
+        var res = j && j.chart && j.chart.result && j.chart.result[0];
+        var meta = res && res.meta;
+        var px = meta && meta.regularMarketPrice;
+        if(!(px > 0)) throw new Error("No price for " + sym);
+        priceSrcIdx = order[k];
+        return { price: px, time: meta.regularMarketTime ? meta.regularMarketTime * 1000 : Date.now() };
+      }catch(e){ lastErr = e; }
+    }
+    throw lastErr;
+  }
+  function istParts(ms){
+    var parts = {};
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:false })
+      .formatToParts(new Date(ms)).forEach(function(p){ parts[p.type] = p.value; });
+    return parts;
+  }
+  function priceStatusText(){
+    var m = state.meta;
+    if(!m || !m.pricesMarketTime) return "Tap Refresh to fetch live / closing prices from NSE.";
+    var p = istParts(m.pricesMarketTime);
+    var nowP = istParts(Date.now());
+    var sameDay = p.day === nowP.day && p.month === nowP.month && p.year === nowP.year;
+    var mins = parseInt(p.hour,10)*60 + parseInt(p.minute,10);
+    var kind = (sameDay && mins < 15*60+30) ? "live (may be delayed)" : "closing price";
+    return "Prices as of " + p.day + " " + p.month + ", " + p.hour + ":" + p.minute + " IST · " + kind;
+  }
+  async function refreshPrices(silent){
+    if(pricesBusy) return;
+    if(!state.funds.length) return;
+    pricesBusy = true;
+    var btn = document.getElementById("refreshPricesBtn");
+    var stat = document.getElementById("priceStatus");
+    if(btn){ btn.disabled = true; btn.textContent = "Fetching…"; }
+    if(stat) stat.textContent = "Fetching prices…";
+    var results = await Promise.all(state.funds.map(async function(f){
+      try{ return { fund: f, q: await fetchQuote(f.ticker) }; }
+      catch(e){ return { fund: f, err: e }; }
+    }));
+    var ok = 0, failed = [], latest = 0;
+    results.forEach(function(r){
+      if(r.q){ r.fund.currentPrice = Math.round(r.q.price * 100) / 100; ok++; if(r.q.time > latest) latest = r.q.time; }
+      else failed.push(r.fund.name);
+    });
+    if(ok > 0){
+      await saveFunds();
+      state.meta.pricesAt = Date.now();
+      state.meta.pricesMarketTime = latest;
+      await saveMeta();
+    }
+    pricesBusy = false;
+    if(state.activeTab === "portfolio") renderPortfolio();
+    if(failed.length === 0) showToast("Prices updated for " + ok + " fund" + (ok===1?"":"s") + ".");
+    else if(ok > 0) showToast("Updated " + ok + ". Failed: " + failed.join(", ") + " — enter manually or retry.");
+    else if(!silent) showToast("Couldn't fetch prices. Check internet and retry.");
+    else if(document.getElementById("priceStatus")) document.getElementById("priceStatus").textContent = "Couldn't fetch prices (offline?). Showing last saved prices.";
+  }
+
+  /* ---------------- PORTFOLIO TAB ---------------- */
+  function renderPortfolio(){
+    var table = document.getElementById("fundTable");
+    var totalInvested = 0, totalValue = 0;
+    var rowsHtml = state.funds.map(function(fund){
+      var tot = fundTotals(fund.id);
+      var avgPrice = tot.units > 0 ? tot.invested/tot.units : 0;
+      var curPrice = fund.currentPrice || 0;
+      var curValue = tot.units * curPrice;
+      var retAbs = curValue - tot.invested;
+      var retPct = tot.invested > 0 ? (retAbs/tot.invested*100) : 0;
+      totalInvested += tot.invested; totalValue += curValue;
+      var retClass = retAbs >= 0 ? "ret-pos" : "ret-neg";
+      return '<tr>' +
+        '<td class="fname">'+escapeHtml(fund.name)+'</td>' +
+        '<td>'+fmtMoney(tot.invested)+'</td>' +
+        '<td>'+fmtNum(tot.units,3)+'</td>' +
+        '<td>'+fmtMoney(avgPrice)+'</td>' +
+        '<td><input type="number" class="price-input cur-price-input" data-fid="'+fund.id+'" value="'+(fund.currentPrice||"")+'" step="0.01" /></td>' +
+        '<td>'+fmtMoney(curValue)+'</td>' +
+        '<td class="'+retClass+'">'+fmtMoney(retAbs)+'<br/>'+fmtPct(retPct)+'</td>' +
+      '</tr>';
+    }).join("");
+    var totalRetAbs = totalValue - totalInvested;
+    var totalRetPct = totalInvested > 0 ? (totalRetAbs/totalInvested*100) : 0;
+    table.innerHTML =
+      '<thead><tr><th>Fund</th><th>Invested</th><th>Units</th><th>Avg Px</th><th>Cur Px</th><th>Value</th><th>Return</th></tr></thead>' +
+      '<tbody>' + rowsHtml +
+      '<tr class="total-row"><td>TOTAL</td><td>'+fmtMoney(totalInvested)+'</td><td></td><td></td><td></td><td>'+fmtMoney(totalValue)+'</td>' +
+      '<td class="'+(totalRetAbs>=0?"ret-pos":"ret-neg")+'">'+fmtMoney(totalRetAbs)+'<br/>'+fmtPct(totalRetPct)+'</td></tr>' +
+      '</tbody>';
+
+    table.querySelectorAll(".cur-price-input").forEach(function(inp){
+      inp.addEventListener("change", async function(){
+        var fid = inp.getAttribute("data-fid");
+        var fund = state.funds.find(function(f){ return f.id === fid; });
+        var val = parseFloat(inp.value);
+        if(fund){ fund.currentPrice = val > 0 ? val : 0; }
+        await saveFunds();
+        renderPortfolio();
+      });
+    });
+
+    var stEl = document.getElementById("priceStatus");
+    if(stEl && !pricesBusy) stEl.textContent = priceStatusText();
+    var rb = document.getElementById("refreshPricesBtn");
+    if(rb){ rb.disabled = pricesBusy; rb.textContent = pricesBusy ? "Fetching…" : "↻ Refresh prices"; }
+
+    renderAllocation(totalValue);
+  }
+
+  function renderAllocation(totalValue){
+    var content = document.getElementById("allocationContent");
+    var items = state.funds.map(function(fund, i){
+      var tot = fundTotals(fund.id);
+      var curValue = tot.units * (fund.currentPrice||0);
+      return { name: fund.name, value: curValue, color: CAT_COLORS[i % CAT_COLORS.length] };
+    }).filter(function(it){ return it.value > 0; });
+
+    if(items.length === 0){
+      content.innerHTML = '<div class="empty-note">No current value yet — deploy your reserves and set current prices to see allocation.</div>';
+      return;
+    }
+    var total = items.reduce(function(a,b){ return a+b.value; }, 0);
+    var svg = buildDonutSVG(items, total);
+    var listHtml = items.map(function(it){
+      var pct = total>0 ? (it.value/total*100) : 0;
+      return '<div class="category-row"><div class="top-line"><span class="cat-name"><span class="cat-dot" style="background:'+it.color+'"></span>'+escapeHtml(it.name)+'</span><span>'+fmtMoney(it.value)+' · '+pct.toFixed(0)+'%</span></div>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+it.color+'"></div></div></div>';
+    }).join("");
+    content.innerHTML = '<div class="chart-wrap"><div class="donut-holder">'+svg+'</div><div class="category-list">'+listHtml+'</div></div>';
+  }
+
+  function buildDonutSVG(items, total){
+    var size = 120, cx = 60, cy = 60, r = 45, stroke = 16;
+    var circumference = 2 * Math.PI * r;
+    var offset = 0;
+    var circles = items.map(function(it){
+      var frac = total > 0 ? it.value/total : 0;
+      var len = frac * circumference;
+      var dasharray = len + " " + (circumference - len);
+      var circle = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+it.color+'" stroke-width="'+stroke+'" ' +
+        'stroke-dasharray="'+dasharray+'" stroke-dashoffset="'+(-offset)+'" transform="rotate(-90 '+cx+' '+cy+')" />';
+      offset += len;
+      return circle;
+    }).join("");
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 120 120">' + circles + '</svg>';
+  }
+
+  /* ---------------- HISTORY TAB ---------------- */
+  function renderHistory(){
+    var totalContributed = state.contributions.reduce(function(a,c){ return a+c.amount; }, 0);
+    var totalDeployed = state.transactions.reduce(function(a,t){ return a+t.amount; }, 0);
+    var totalValue = state.funds.reduce(function(a,f){ var tot = fundTotals(f.id); return a + tot.units*(f.currentPrice||0); }, 0);
+    var overallRet = totalDeployed > 0 ? ((totalValue-totalDeployed)/totalDeployed*100) : 0;
+
+    document.getElementById("historyOverview").innerHTML =
+      '<div class="stat-tile"><div class="label">Total Contributed</div><div class="value">'+fmtMoney(totalContributed)+'</div></div>' +
+      '<div class="stat-tile"><div class="label">Total Deployed</div><div class="value">'+fmtMoney(totalDeployed)+'</div></div>' +
+      '<div class="stat-tile"><div class="label">Reserves Idle</div><div class="value">'+fmtMoney(state.reserves.regular+state.reserves.dip)+'</div></div>' +
+      '<div class="stat-tile"><div class="label">Overall Return</div><div class="value" style="color:'+(overallRet>=0?"#3E7C59":"#A6433A")+'">'+fmtPct(overallRet)+'</div></div>';
+
+    var byMonth = {};
+    var order = [];
+    state.transactions.forEach(function(t){
+      var mk = monthKey(t.date);
+      if(!byMonth[mk]){ byMonth[mk] = 0; order.push(mk); }
+      byMonth[mk] += t.amount;
+    });
+    order.sort();
+    var monthlyEl = document.getElementById("monthlySummary");
+    if(order.length === 0){
+      monthlyEl.innerHTML = '<div class="empty-note">No deployments recorded yet.</div>';
+    } else {
+      var cum = 0;
+      monthlyEl.innerHTML = '<div class="log-list">' + order.map(function(mk){
+        cum += byMonth[mk];
+        return '<div class="log-row"><span>'+monthLabel(mk)+'</span><span class="lr-val">'+fmtMoney(byMonth[mk])+' <span style="color:var(--ink-faint);font-weight:400;">(cum '+fmtMoney(cum)+')</span></span></div>';
+      }).join("") + '</div>';
+    }
+
+    var txnEl = document.getElementById("txnLog");
+    if(state.transactions.length === 0){
+      txnEl.innerHTML = '<div class="empty-note">No transactions logged yet.</div>';
+    } else {
+      var sorted = state.transactions.slice().sort(function(a,b){ return b.date.localeCompare(a.date); });
+      txnEl.innerHTML = sorted.map(function(t){
+        var tagHtml = t.type === "dip" ? '<span class="tag dip">DIP '+(t.triggerLevel||"")+'%</span>' : '<span class="tag regular">REGULAR</span>';
+        if(t.manual){ tagHtml += '<span class="tag manual">MANUAL</span>'; }
+        return '<div class="txn-row"><div class="txn-left"><div class="txn-cat">'+escapeHtml(t.fundName)+tagHtml+'</div>' +
+          '<div class="txn-meta">'+escapeHtml(t.date)+' · '+fmtNum(t.units,3)+' units @ '+fmtMoney(t.price)+'</div></div>' +
+          '<div class="txn-right-actions"><span class="txn-amt">'+fmtMoney(t.amount)+'</span>' +
+          '<button class="btn-icon edit-txn-btn" data-id="'+t.id+'" title="Edit">✎</button>' +
+          '<button class="btn-icon del-txn-btn" data-id="'+t.id+'" title="Delete">✕</button></div></div>';
+      }).join("");
+      txnEl.querySelectorAll(".del-txn-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){ deleteTransaction(btn.getAttribute("data-id")); });
+      });
+      txnEl.querySelectorAll(".edit-txn-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){ openEditTransactionModal(btn.getAttribute("data-id")); });
+      });
+    }
+  }
+
+  async function deleteTransaction(id){
+    var t = state.transactions.find(function(x){ return x.id === id; });
+    if(!t) return;
+    confirmModal("Delete this transaction?", "This removes the entry and refunds " + fmtMoney(t.amount) + " back to your " + (t.type==="dip"?"Dip":"Regular") + " Reserve.", async function(){
+      state.reserves[t.type] = (state.reserves[t.type] || 0) + t.amount;
+      state.transactions = state.transactions.filter(function(x){ return x.id !== id; });
+      await saveTxn(); await saveReserves();
+      renderHistory();
+      showToast("Transaction deleted and refunded to reserve.");
+    });
+  }
+
+  function openEditTransactionModal(id){
+    var t = state.transactions.find(function(x){ return x.id === id; });
+    if(!t) return;
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    var fundOptions = state.funds.map(function(f){ return '<option value="'+f.id+'" '+(f.id===t.fundId?"selected":"")+'>'+escapeHtml(f.name)+'</option>'; }).join("");
+    overlay.innerHTML = '<div class="modal-sheet">' +
+      '<div class="modal-close-row"><button id="editTxnCloseBtn">✕</button></div>' +
+      '<h3>Edit transaction</h3><div class="modal-sub">Source reserve ('+(t.type==="dip"?"Dip":"Regular")+') stays fixed. Changing the amount adjusts that reserve balance to compensate.</div>' +
+      '<div class="form-field"><label>Fund</label><select id="editTxnFund">'+fundOptions+'</select></div>' +
+      '<div class="form-row">' +
+        '<div class="form-field"><label>Amount (₹)</label><input type="number" id="editTxnAmount" class="mono-input" value="'+t.amount+'" min="0" /></div>' +
+        '<div class="form-field"><label>Price</label><input type="number" id="editTxnPrice" class="mono-input" value="'+t.price+'" min="0" step="0.01" /></div>' +
+      '</div>' +
+      '<div class="form-field"><label>Date</label><input type="date" id="editTxnDate" value="'+t.date+'" /></div>' +
+      '<div class="section-sub" id="editTxnUnitsPreview" style="margin-top:-2px;">'+fmtNum(t.units,3)+' units</div>' +
+      '<div class="form-error" id="editTxnError"></div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="editTxnCancelBtn">Cancel</button><button class="btn btn-primary" id="editTxnSaveBtn">Save changes</button></div>' +
+      '</div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+
+    function updatePreview(){
+      var amt = parseFloat(document.getElementById("editTxnAmount").value);
+      var price = parseFloat(document.getElementById("editTxnPrice").value);
+      var out = document.getElementById("editTxnUnitsPreview");
+      out.textContent = (amt>0 && price>0) ? (fmtNum(amt/price,3) + " units") : "— units";
+    }
+    document.getElementById("editTxnAmount").addEventListener("input", updatePreview);
+    document.getElementById("editTxnPrice").addEventListener("input", updatePreview);
+
+    function close(){ overlay.remove(); }
+    document.getElementById("editTxnCloseBtn").addEventListener("click", close);
+    document.getElementById("editTxnCancelBtn").addEventListener("click", close);
+    document.getElementById("editTxnSaveBtn").addEventListener("click", async function(){
+      var errEl = document.getElementById("editTxnError");
+      var newAmount = parseFloat(document.getElementById("editTxnAmount").value);
+      var newPrice = parseFloat(document.getElementById("editTxnPrice").value);
+      var newDate = document.getElementById("editTxnDate").value || t.date;
+      var newFundId = document.getElementById("editTxnFund").value;
+      if(!newAmount || newAmount <= 0){ errEl.textContent = "Enter a valid amount."; return; }
+      if(!newPrice || newPrice <= 0){ errEl.textContent = "Enter a valid price."; return; }
+
+      var delta = newAmount - t.amount; // positive = drawing more from reserve
+      if(delta > state.reserves[t.type] + 0.01){
+        errEl.textContent = "That increase needs " + fmtMoney(delta) + " more than your available " + (t.type==="dip"?"Dip":"Regular") + " Reserve (" + fmtMoney(state.reserves[t.type]) + ").";
+        return;
+      }
+      state.reserves[t.type] = Math.max(0, state.reserves[t.type] - delta);
+
+      var fund = state.funds.find(function(f){ return f.id === newFundId; });
+      t.amount = newAmount; t.price = newPrice; t.units = newAmount/newPrice; t.date = newDate;
+      t.fundId = newFundId; t.fundName = fund ? fund.name : t.fundName;
+      if(fund){ fund.currentPrice = newPrice; }
+
+      await saveTxn(); await saveReserves(); await saveFunds();
+      close();
+      renderHistory();
+      showToast("Transaction updated.");
+    });
+  }
+
+  /* ---------------- SETTINGS TAB ---------------- */
+  function renderSettings(){
+    document.getElementById("setMonthly").value = state.settings.monthlyContribution;
+    document.getElementById("setT1").value = state.settings.trigger1Pct;
+    document.getElementById("setT2").value = state.settings.trigger2Pct;
+    document.getElementById("setT1Deploy").value = state.settings.trigger1DeployPct;
+    document.getElementById("setT2Deploy").value = state.settings.trigger2DeployPct;
+    renderFundEditList();
+  }
+
+  document.getElementById("saveSettingsBtn").addEventListener("click", async function(){
+    state.settings.monthlyContribution = parseFloat(document.getElementById("setMonthly").value) || 0;
+    state.settings.trigger1Pct = parseFloat(document.getElementById("setT1").value) || 0;
+    state.settings.trigger2Pct = parseFloat(document.getElementById("setT2").value) || 0;
+    state.settings.trigger1DeployPct = parseFloat(document.getElementById("setT1Deploy").value) || 0;
+    state.settings.trigger2DeployPct = parseFloat(document.getElementById("setT2Deploy").value) || 0;
+    await saveSettings();
+    showToast("Settings saved.");
+    renderTrigger();
+  });
+
+  function renderFundEditList(){
+    var el = document.getElementById("fundEditList");
+    el.innerHTML = state.funds.map(function(f){
+      return '<div class="fund-edit-row" data-fid="'+f.id+'">' +
+        '<input class="name-in" data-field="name" value="'+escapeHtml(f.name)+'" placeholder="Fund name" />' +
+        '<input class="ticker-in" data-field="ticker" value="'+escapeHtml(f.ticker)+'" placeholder="NSE:TICKER" />' +
+        '<input class="weight-in" data-field="weight" type="number" value="'+f.weight+'" placeholder="%" />' +
+        '<button class="fund-del-btn" title="Remove fund">✕</button>' +
+      '</div>';
+    }).join("");
+
+    el.querySelectorAll(".fund-edit-row").forEach(function(row){
+      var fid = row.getAttribute("data-fid");
+      row.querySelectorAll("input").forEach(function(inp){
+        inp.addEventListener("change", async function(){
+          var fund = state.funds.find(function(f){ return f.id === fid; });
+          if(!fund) return;
+          var field = inp.getAttribute("data-field");
+          if(field === "weight"){ fund.weight = parseFloat(inp.value) || 0; }
+          else { fund[field] = inp.value; }
+          await saveFunds();
+          renderWeightCheck();
+        });
+      });
+      row.querySelector(".fund-del-btn").addEventListener("click", async function(){
+        state.funds = state.funds.filter(function(f){ return f.id !== fid; });
+        await saveFunds();
+        renderFundEditList();
+      });
+    });
+    renderWeightCheck();
+  }
+
+  function renderWeightCheck(){
+    var sum = state.funds.reduce(function(a,f){ return a+(f.weight||0); }, 0);
+    var el = document.getElementById("weightCheck");
+    if(Math.abs(sum-100) < 0.01){
+      el.innerHTML = '<div class="weight-ok">Weights sum to 100%. ✓</div>';
+    } else {
+      el.innerHTML = '<div class="weight-warn">Weights currently sum to '+sum.toFixed(1)+'% — adjust so they total 100%.</div>';
+    }
+  }
+
+  document.getElementById("addFundBtn").addEventListener("click", async function(){
+    state.funds.push({ id: uid(), name: "New Fund", ticker: "NSE:TICKER", weight: 0, currentPrice: 0 });
+    await saveFunds();
+    renderFundEditList();
+  });
+
+  document.getElementById("clearDataBtn").addEventListener("click", function(){
+    var overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = '<div class="modal-sheet"><h3>Reset all data?</h3>' +
+      '<div class="modal-sub">This clears all logged Nifty levels, reserves, contributions and transactions on this device. This cannot be undone.</div>' +
+      '<div class="btn-row"><button class="btn btn-ghost" id="resetCancelBtn">Cancel</button><button class="btn btn-alert" id="resetConfirmBtn">Reset everything</button></div></div>';
+    document.getElementById("modalRoot").appendChild(overlay);
+    document.getElementById("resetCancelBtn").addEventListener("click", function(){ overlay.remove(); });
+    document.getElementById("resetConfirmBtn").addEventListener("click", async function(){
+      state.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      state.funds = JSON.parse(JSON.stringify(DEFAULT_FUNDS));
+      state.niftyLog = []; state.reserves = {regular:0,dip:0}; state.contributions = []; state.transactions = []; state.meta = { lastRolloverMonth: monthKey(todayISO()), lastRollover: null, pricesAt: null, pricesMarketTime: null };
+      await saveMeta();
+      await saveSettings(); await saveFunds(); await saveNifty(); await saveReserves(); await saveContrib(); await saveTxn();
+      overlay.remove();
+      renderActiveTab();
+      showToast("All data reset.");
+    });
+  });
+
+  /* ---------------- EXCEL EXPORT ---------------- */
+  document.getElementById("exportBtn").addEventListener("click", function(){
+    if(typeof XLSX === "undefined"){
+      alertModal("Export unavailable", "The Excel export library couldn't load (no internet connection?). Try again when you're online.");
+      return;
+    }
+    var wb = XLSX.utils.book_new();
+
+    var totalContributed = state.contributions.reduce(function(a,c){ return a+c.amount; }, 0);
+    var totalDeployed = state.transactions.reduce(function(a,t){ return a+t.amount; }, 0);
+    var totalValue = state.funds.reduce(function(a,f){ var tot = fundTotals(f.id); return a + tot.units*(f.currentPrice||0); }, 0);
+    var ts = triggerStatus();
+    var summaryRows = [
+      ["Trigger Invest — Statement", ""],
+      ["Generated on", todayISO()],
+      [""],
+      ["Nifty Reference High", referenceHigh()],
+      ["Nifty Current Level", currentLevel()],
+      ["Drawdown %", drawdownPct().toFixed(2)+"%"],
+      ["Trigger Status", ts.label],
+      [""],
+      ["Total Contributed (₹)", totalContributed],
+      ["Total Deployed (₹)", totalDeployed],
+      ["Regular Reserve Idle (₹)", state.reserves.regular],
+      ["Dip Reserve Idle (₹)", state.reserves.dip],
+      ["Current Portfolio Value (₹)", totalValue],
+      ["Overall Return (₹)", totalValue-totalDeployed],
+      ["Overall Return (%)", totalDeployed>0 ? ((totalValue-totalDeployed)/totalDeployed*100).toFixed(2)+"%" : "0%"]
+    ];
+    var ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+    ws1["!cols"] = [{wch:28},{wch:20}];
+    XLSX.utils.book_append_sheet(wb, ws1, "Summary");
+
+    var fundRows = [["Fund","Ticker","Weight %","Total Invested","Total Units","Avg Price","Current Price","Current Value","Return (₹)","Return (%)"]];
+    state.funds.forEach(function(f){
+      var tot = fundTotals(f.id);
+      var avgPrice = tot.units>0 ? tot.invested/tot.units : 0;
+      var curValue = tot.units*(f.currentPrice||0);
+      var retAbs = curValue-tot.invested;
+      var retPct = tot.invested>0 ? (retAbs/tot.invested*100) : 0;
+      fundRows.push([f.name, f.ticker, f.weight, tot.invested, tot.units, avgPrice, f.currentPrice||0, curValue, retAbs, retPct.toFixed(2)+"%"]);
+    });
+    var ws2 = XLSX.utils.aoa_to_sheet(fundRows);
+    ws2["!cols"] = [{wch:14},{wch:16},{wch:9},{wch:14},{wch:12},{wch:11},{wch:12},{wch:14},{wch:12},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, ws2, "Fund Performance");
+
+    var monthRows = [["Month","Amount Deployed (₹)","Cumulative Deployed (₹)"]];
+    var byMonth = {}; var order = [];
+    state.transactions.forEach(function(t){
+      var mk = monthKey(t.date);
+      if(!byMonth[mk]){ byMonth[mk]=0; order.push(mk); }
+      byMonth[mk]+=t.amount;
+    });
+    order.sort();
+    var cum = 0;
+    order.forEach(function(mk){ cum+=byMonth[mk]; monthRows.push([monthLabel(mk), byMonth[mk], cum]); });
+    var ws3 = XLSX.utils.aoa_to_sheet(monthRows);
+    ws3["!cols"] = [{wch:12},{wch:20},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, ws3, "Monthly Summary");
+
+    var txnRows = [["Date","Type","Fund","Amount (₹)","Price","Units","Trigger %","Nifty Level"]];
+    state.transactions.slice().sort(function(a,b){ return a.date.localeCompare(b.date); }).forEach(function(t){
+      txnRows.push([t.date, t.type, t.fundName, t.amount, t.price, t.units, t.triggerLevel||"", t.niftyLevel||""]);
+    });
+    var ws4 = XLSX.utils.aoa_to_sheet(txnRows);
+    ws4["!cols"] = [{wch:12},{wch:9},{wch:14},{wch:12},{wch:10},{wch:10},{wch:10},{wch:11}];
+    XLSX.utils.book_append_sheet(wb, ws4, "Transactions");
+
+    var niftyRows = [["Date","Nifty Level"]];
+    sortedNiftyLog().forEach(function(e){ niftyRows.push([e.date, e.level]); });
+    var ws5 = XLSX.utils.aoa_to_sheet(niftyRows);
+    ws5["!cols"] = [{wch:12},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws5, "Nifty Log");
+
+    XLSX.writeFile(wb, "Investment_Statement_" + todayISO() + ".xlsx");
+    showToast("Excel statement downloaded.");
+  });
+
+  /* ---------------- nav wiring & init ---------------- */
+  document.querySelectorAll(".nav-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){ showTab(btn.getAttribute("data-tab")); });
+  });
+
+  async function init(){
+    document.getElementById("niftyDateInput").value = todayISO();
+    await loadAll();
+    await checkRollover();
+    showTab("trigger");
+  }
+  init();
+  document.addEventListener("visibilitychange", async function(){
+    if(document.visibilityState !== "visible") return;
+    var moved = await checkRollover();
+    if(moved > 0){ renderActiveTab(); showToast(fmtMoney(moved) + " moved from Regular to Dip Reserve (new month)."); }
+  });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){ /* offline install unsupported in this context */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>
